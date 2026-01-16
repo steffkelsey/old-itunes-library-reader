@@ -53,3 +53,15 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# core dumps
+core.*
+
+# built binaries
+bin
+
+# itl files
+*.itl
+
+# reinclude the test resources
+!resources/**/*
