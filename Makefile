@@ -13,13 +13,12 @@ clean:
 	rm -f bin/*
 
 $(TARGET): $(OBJ)
-	gcc -o $@ $?
+	gcc -o $@ $? -lcrypto -lz
 
 # Uncomment to compile without debug info
 #obj/%.o : src/%.c
-#	gcc -c $< -o $@ -Iinclude
+#  gcc -c "$(<)" -o "$(@)" -Iinclude; \
 
 # To add debug flag
 obj/%.o : src/%.c	
-	gcc -c $< -o $@ -Iinclude -g
-
+	gcc -c "$(<)" -o "$(@)" -Iinclude -g

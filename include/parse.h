@@ -2,27 +2,47 @@
 #define PARSE_H
 
 #define HEADER_MAGIC "hdfm"
+#define CHUNK 16384 // Buffer size for zlib chunks
 
 struct dbheader_t {
 	unsigned char magic[4];
-	unsigned short version;
+	unsigned int headerlength;
 	unsigned int filelength;
+	unsigned int unknown;
+	unsigned char versionlength;
+	unsigned char *version;
+	unsigned int trackcount;
+	unsigned int playlistcount;
+};
+
+struct db_t {
+  struct dbheader_t *header;
+  unsigned char *data;
 };
 
 struct track_t {
+  int id;
 	char name[256];
+	char artist[256];
+	char album[256];
+  char file_location[256];
 };
 
 struct playlist_t {
+  int id;
 	char name[256];
+  int *track_ids;
 };
 
-int validate_db_header(int fd, struct dbheader_t **headerOut);
-int read_playlists(int fd, struct dbheader_t *, struct playlist_t **playlistsOut);
-int read_tracks(int fd, struct dbheader_t *, struct track_t **tracksOut);
-void list_playlists(struct dbheader_t *dbhdr, struct playlist_t *playlists);
-void list_tracks(struct dbheader_t *dbhdr, struct track_t *tracks);
-int show_track(struct dbheader_t *dbhdr, struct track_t *tracks, char *trackstring);
-int show_playlist(struct dbheader_t *dbhdr, struct playlist_t *playlists, char *playliststring);
+int validate_db_header(int fd, struct db_t **dbOut);
+int inflate_data(unsigned char *input, int inputlength, unsigned char **output);
+int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t **playlistsOut);
+int parseGenericHohm (unsigned char **data_ptr, unsigned char **dataOut);
+int read_playlists(struct db_t *db, struct playlist_t **playlistsOut);
+int read_tracks(struct db_t *db, struct track_t **tracksOut);
+void list_playlists(struct db_t *db, struct playlist_t *playlists);
+void list_tracks(struct db_t *db, struct track_t *tracks);
+int show_track(struct db_t *db, struct track_t *tracks, char *trackstring);
+int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring);
 
 #endif

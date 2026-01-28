@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   int c;
 
   int dbfd = -1;
-  struct dbheader_t *dbhdr = NULL;
+  struct db_t *db = NULL;
   struct track_t *tracks = NULL;
   struct playlist_t *playlists = NULL;
 
@@ -68,42 +68,70 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (validate_db_header(dbfd, &dbhdr) == STATUS_ERROR) {
+  if (validate_db_header(dbfd, &db) == STATUS_ERROR) {
    printf("Failed to validate database header\n");
    return -1;
   }
    
+  printf("iTunes Version: %s\n", db->header->version);
+  
+  // Parse the library (many blocks)
+  if (parse_library(db, &tracks, &playlists) == STATUS_ERROR) {
+    printf("Failed to parse library\n");
+    return -1;
+  }
 
   if (trackstring) {
-    if (show_track(dbhdr, tracks, trackstring) == STATUS_ERROR) {
+    if (show_track(db, tracks, trackstring) == STATUS_ERROR) {
       printf("Failed to show track\n");
       return -1;
     }
   }
 
+  if (listtracks) {
+    list_tracks(db, tracks);
+  }
+
+  if (listplaylists) {
+    list_playlists(db, playlists);
+  }
+
   if (playliststring) {
-    if (show_playlist(dbhdr, playlists, playliststring) == STATUS_ERROR) {
+    if (show_playlist(db, playlists, playliststring) == STATUS_ERROR) {
       printf("Failed to show playlist\n");
       return -1;
     }
   }
 
   if (listtracks) {
-    list_tracks(dbhdr, tracks);
+    list_tracks(db, tracks);
   }
 
   if (listplaylists) {
-    list_playlists(dbhdr, playlists);
+    list_playlists(db, playlists);
   }
-
-  free(dbhdr);
-  dbhdr = NULL;
 
   free(tracks);
   tracks = NULL;
 	
+  for (int i = 0; i < db->header->playlistcount; i++) {
+    free(playlists[i].track_ids);
+    playlists[i].track_ids = NULL;
+  }
   free(playlists);
   playlists = NULL;
+
+  free(db->header->version);
+  db->header->version = NULL;
+
+  free(db->header);
+  db->header = NULL;
+
+  free(db->data);
+  db->data = NULL;
+
+  free(db);
+  db = NULL;
 
   return 0;
 }
