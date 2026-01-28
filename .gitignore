@@ -63,5 +63,8 @@ bin
 # itl files
 *.itl
 
+# export files
+*.m3u
+
 # reinclude the test resources
 !resources/**/*

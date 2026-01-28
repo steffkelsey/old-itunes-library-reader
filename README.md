@@ -15,6 +15,11 @@ and this
 The description of the file used as a starting point is
 [here](https://metacpan.org/release/BDFOY/Mac-iTunes-1.22/view/doc/file_format.pod).
 
+## Requirements
+
+The final binary is dynamically linked to the `-lcrypto` and `-lz` libs so you
+must have OpenSSL and ZLib installed.
+
 ## To Debug
 
 Change the Makefile to compile with debugging information.  

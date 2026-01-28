@@ -14,23 +14,28 @@ void print_usage(char *argv[]) {
   printf("\t -t - show information of named track\n");
   printf("\t -p - list the playlists\n");
   printf("\t -s - show information of named playlist\n");
+  printf("\t -e - export named playlist as m3u\n");
+  printf("\t -o - [required for -e] m3u output file path\n");
   return;
 }
 
 int main(int argc, char *argv[]) { 
   char *trackstring = NULL;
   char *playliststring = NULL;
+  char *exportstring = NULL;
+  char *outputpath = NULL;
   char *filepath = NULL;
   bool listtracks = false;
   bool listplaylists = false;
   int c;
 
   int dbfd = -1;
+  int ofd = -1;
   struct db_t *db = NULL;
   struct track_t *tracks = NULL;
   struct playlist_t *playlists = NULL;
 
-  while ((c = getopt(argc, argv, "lpf:t:s:")) != -1) {
+  while ((c = getopt(argc, argv, "lpf:t:s:e:o:")) != -1) {
     switch (c) {
       case 'f':
         filepath = optarg;
@@ -46,6 +51,12 @@ int main(int argc, char *argv[]) {
         break;
       case 's':
         playliststring = optarg;
+        break;
+      case 'e':
+        exportstring = optarg;
+        break;
+      case 'o':
+        outputpath = optarg;
         break;
       case '?':
         printf("Unknown option -%c\n", c);
@@ -68,6 +79,14 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  if (outputpath) {
+    ofd = open_m3u_file(outputpath);
+    if (ofd == STATUS_ERROR) {
+      printf("Unable to create/open m3u file\n");
+      return -1;
+    }
+  }
+
   if (validate_db_header(dbfd, &db) == STATUS_ERROR) {
    printf("Failed to validate database header\n");
    return -1;
@@ -81,9 +100,13 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  if (trackstring) {
-    if (show_track(db, tracks, trackstring) == STATUS_ERROR) {
-      printf("Failed to show track\n");
+  if (exportstring) {
+    if (ofd < 0) {
+      printf("-e (Export) requires -o (Output file path)\n");
+      return -1;
+    }
+    if (export_playlist(db, playlists, exportstring, tracks, ofd) == STATUS_ERROR) {
+      printf("Failed to export playlist\n");
       return -1;
     }
   }
@@ -94,6 +117,13 @@ int main(int argc, char *argv[]) {
 
   if (listplaylists) {
     list_playlists(db, playlists);
+  }
+
+  if (trackstring) {
+    if (show_track(db, tracks, trackstring) == STATUS_ERROR) {
+      printf("Failed to show track\n");
+      return -1;
+    }
   }
 
   if (playliststring) {

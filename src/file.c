@@ -18,3 +18,13 @@ int open_db_file(char *filename) {
   return fd;
 }
 
+int open_m3u_file(char *filename) {
+  // We don't care if the file exists or not
+  int fd = open(filename, O_RDWR | O_CREAT, 0644);
+  if (fd == -1) {
+    perror("open");
+    return STATUS_ERROR;
+  }
+
+  return fd;
+}

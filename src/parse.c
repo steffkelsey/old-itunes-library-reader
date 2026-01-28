@@ -93,6 +93,55 @@ int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playlists
   return STATUS_SUCCESS;
 }
 
+int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks, int fd) {
+  if (fd < 0) {
+    printf("Got a bad FD from the user\n");
+    return STATUS_ERROR;
+  }
+  if (NULL == db) return STATUS_ERROR;
+
+  char *name = strtok(playliststring, ",");
+  if (NULL == name) return STATUS_ERROR;
+
+  // Truncate the file to zero each time to always overwrite from scratch
+  if (ftruncate(fd, 0) == -1) {
+    printf("Error truncating file\n");
+    return STATUS_ERROR;
+  }
+
+  // Set the file descripter to the beginning
+  lseek(fd, 0, SEEK_SET);
+
+  int num_matches = 0;
+  int i = 0;
+  const char *nl = "\n";
+  size_t nl_length = strlen(nl);
+  for (; i < db->header->playlistcount; i++) {
+    if (strcmp(playlists[i].name, name) == 0) {
+      for (int j = 0; j < playlists[i].trackcount; j++) {
+        //printf("\tTrack ID: %d\n", playlists[i].track_ids[j]);
+        for (int k = 0; k < db->header->trackcount; k++) {
+          if (playlists[i].track_ids[j] == tracks[k].id) {
+            // For each song, write the file location into one line
+            write(fd, &tracks[k].file_location, tracks[k].file_location_length * sizeof(char));
+            // write the newline string
+            write(fd, nl, nl_length);
+            continue;
+          }
+        }
+      }
+      num_matches++;
+      break;
+    }
+  }
+
+  if (num_matches == 0) {
+    printf("No playlist found with that name\n");
+  }
+
+  return STATUS_SUCCESS;
+}
+
 int validate_db_header(int fd, struct db_t **dbOut) {
   if (fd < 0) {
     printf("Got a bad FD from the user\n");
@@ -461,7 +510,8 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
       switch (hohm_type) {
         case 0x02: // track title
           unsigned char *track_name = NULL;
-          ret = parseGenericHohm(&data_ptr, &track_name);
+          int track_name_length = 0;
+          ret = parseGenericHohm(&data_ptr, &track_name, &track_name_length);
           if (ret == STATUS_ERROR) {
             printf("Failed to parse hohm block type track name\n");
             return STATUS_ERROR;
@@ -475,7 +525,8 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           break;
         case 0x03: // album title
           unsigned char *album_name = NULL;
-          ret = parseGenericHohm(&data_ptr, &album_name);
+          int album_name_length = 0;
+          ret = parseGenericHohm(&data_ptr, &album_name, &album_name_length);
           if (ret == STATUS_ERROR) {
             printf("Failed to parse hohm block type album name\n");
             return STATUS_ERROR;
@@ -489,7 +540,8 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           break;
         case 0x04: // artist name
           unsigned char *artist_name = NULL;
-          ret = parseGenericHohm(&data_ptr, &artist_name);
+          int artist_name_length = 0;
+          ret = parseGenericHohm(&data_ptr, &artist_name, &artist_name_length);
           if (ret == STATUS_ERROR) {
             printf("Failed to parse hohm block type artist name\n");
             return STATUS_ERROR;
@@ -503,7 +555,8 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           break;
         case 0x0B: // file location
           unsigned char *file_location = NULL;
-          ret = parseGenericHohm(&data_ptr, &file_location);
+          int file_location_length = 0;
+          ret = parseGenericHohm(&data_ptr, &file_location, &file_location_length);
           if (ret == STATUS_ERROR) {
             printf("Failed to parse hohm block type file location\n");
             return STATUS_ERROR;
@@ -512,12 +565,14 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           byte_cnt += ret;
           //printf("file location: %s\n", file_location);
           strncpy(tracks[track_cnt-1].file_location, file_location, sizeof(tracks[track_cnt-1].file_location));
+          tracks[track_cnt-1].file_location_length = file_location_length;
           free(file_location);
           file_location = NULL;
           break;
         case 0x64: // playlist name
           unsigned char *playlist_name = NULL;
-          ret = parseGenericHohm(&data_ptr, &playlist_name);
+          int playlist_name_length = 0;
+          ret = parseGenericHohm(&data_ptr, &playlist_name, &playlist_name_length);
           if (ret == STATUS_ERROR) {
             printf("Failed to parse hohm block type playlist name\n");
             return STATUS_ERROR;
@@ -587,7 +642,7 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
   //printf("Num playlists: %d, Playlist CNT: %d\n", total_playlist_num, playlist_cnt);
 }
 
-int parseGenericHohm (unsigned char **data_ptr, unsigned char **dataOut) {
+int parseGenericHohm (unsigned char **data_ptr, unsigned char **dataOut, int *outlength) {
   int byte_cnt = 0;
   // Generic hohm parsing
   // Byte Length Comment
@@ -602,6 +657,7 @@ int parseGenericHohm (unsigned char **data_ptr, unsigned char **dataOut) {
   *data_ptr += 4;
   byte_cnt += 4;
   data_length = ntohl(data_length);
+  *outlength = data_length;
   *data_ptr += 8;
   byte_cnt += 8;
   unsigned char *data = malloc((1 + data_length) * sizeof(unsigned char));
