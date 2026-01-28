@@ -3,7 +3,7 @@ SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%.c, obj/%.o, $(SRC))
 
 run: clean default
-	./$(TARGET) -f "./resources/iTunes 10.2.2 Library with single track.itl"
+	./$(TARGET) -f "./resources/iTunes 10.2.2 Library with single track.itl" -p
 	#./$(TARGET) -f ./iTunes_Library.itl -p
 
 default: $(TARGET)

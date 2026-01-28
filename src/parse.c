@@ -18,49 +18,77 @@
 void list_tracks(struct db_t *db, struct track_t *tracks) {
   if (NULL == db) return;
 
-  printf("list_tracks called!\n");
+  int i = 0;
+  for (; i < db->header->trackcount; i++) {
+    // list the id and name
+    printf("%d. %s\n", tracks[i].id, tracks[i].name);
+  }
+}
+
+int show_track(struct db_t *db, struct track_t *tracks, char *trackstring) {
+  if (NULL == db) return STATUS_ERROR;
+  char *name = strtok(trackstring, ",");
+  if (NULL == name) return STATUS_ERROR;
+
+  int num_matches = 0;
+  int i = 0;
+  for (; i < db->header->trackcount; i++) {
+    if (strcmp(tracks[i].name, name) == 0) {
+      printf("%d. %s\n", tracks[i].id, tracks[i].name);
+      printf("\tArtist: %s\n", tracks[i].artist);
+      printf("\tAlbum: %s\n", tracks[i].album);
+      printf("\tFile: %s\n", tracks[i].file_location);
+      num_matches++;
+    }
+  }
+
+  if (num_matches == 0) {
+    printf("No track found with that name\n");
+  }
+
+  return STATUS_SUCCESS;
 }
 
 void list_playlists(struct db_t *db, struct playlist_t *playlists) {
   if (NULL == db) return;
 
-  printf("list_playlists called!\n");
+  int i = 0;
+  for (; i < db->header->playlistcount; i++) {
+    // Only list if we have tracks in the playlist
+    if (playlists[i].trackcount < 1) continue;
+    // list the id, name, and track count
+    printf("%d. %s, Tracks: %d\n", playlists[i].id, playlists[i].name, playlists[i].trackcount);
+  }
 }
 
-int show_track(struct db_t *db, struct track_t *tracks, char *trackstring) {
+int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks) {
   if (NULL == db) return STATUS_ERROR;
 
-  printf("show_track called!\n");
+  char *name = strtok(playliststring, ",");
+  if (NULL == name) return STATUS_ERROR;
 
-  return STATUS_SUCCESS;
-}
-
-int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring) {
-  if (NULL == db) return STATUS_ERROR;
-
-  printf("show_playlist called!\n");
-
-  return STATUS_SUCCESS;
-}
-
-int read_tracks(struct db_t *db, struct track_t **tracksOut) {
-  if (NULL == db) {
-    printf("Got a bad db from the user\n");
-    return STATUS_ERROR;
+  int num_matches = 0;
+  int i = 0;
+  for (; i < db->header->playlistcount; i++) {
+    if (strcmp(playlists[i].name, name) == 0) {
+      printf("%d. %s, Tracks: %d\n", playlists[i].id, playlists[i].name, playlists[i].trackcount);
+      for (int j = 0; j < playlists[i].trackcount; j++) {
+        //printf("\tTrack ID: %d\n", playlists[i].track_ids[j]);
+        for (int k = 0; k < db->header->trackcount; k++) {
+          if (playlists[i].track_ids[j] == tracks[k].id) {
+            printf("%d. %s\n", j, tracks[k].name);
+            //printf("  %s\n", tracks[k].file_location);
+            continue;
+          }
+        }
+      }
+      num_matches++;
+    }
   }
-  
-  printf("read_tracks called!\n");
 
-  return STATUS_SUCCESS;
-}
-
-int read_playlists(struct db_t *db, struct playlist_t **playlistsOut) {
-  if (NULL == db) {
-    printf("Got a bad db from the user\n");
-    return STATUS_ERROR;
+  if (num_matches == 0) {
+    printf("No playlist found with that name\n");
   }
-  
-  printf("read_playlists called!\n");
 
   return STATUS_SUCCESS;
 }
@@ -387,6 +415,7 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
       playlists[playlist_cnt-1].id = playlist_cnt-1;
       // Reset the track_id cnt
       playlist_track_id_cnt = 0;
+      playlists[playlist_cnt-1].trackcount = num_items;
       // Allocate memory for the list of track_ids
       if (num_items > 0) {
         playlists[playlist_cnt-1].track_ids = calloc(num_items, sizeof(int));
@@ -472,7 +501,7 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           free(artist_name);
           artist_name = NULL;
           break;
-        case 0x0D: // file location
+        case 0x0B: // file location
           unsigned char *file_location = NULL;
           ret = parseGenericHohm(&data_ptr, &file_location);
           if (ret == STATUS_ERROR) {
@@ -524,7 +553,7 @@ int parse_library(struct db_t *db, struct track_t **tracksOut, struct playlist_t
           //printf("0x%02X - data str: %s\n", hohm_type, data_str);
           //free(data_str);
           //data_str = NULL;
-          break;
+          //break;
       }
       block_length = record_length;
       //if (sub_block_bytes_remaining > 0) {

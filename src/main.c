@@ -97,18 +97,10 @@ int main(int argc, char *argv[]) {
   }
 
   if (playliststring) {
-    if (show_playlist(db, playlists, playliststring) == STATUS_ERROR) {
+    if (show_playlist(db, playlists, playliststring, tracks) == STATUS_ERROR) {
       printf("Failed to show playlist\n");
       return -1;
     }
-  }
-
-  if (listtracks) {
-    list_tracks(db, tracks);
-  }
-
-  if (listplaylists) {
-    list_playlists(db, playlists);
   }
 
   free(tracks);
