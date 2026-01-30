@@ -13,9 +13,10 @@ void print_usage(char *argv[]) {
   printf("\t -l - list the tracks\n");
   printf("\t -t - show information of named track\n");
   printf("\t -p - list the playlists\n");
-  printf("\t -s - show information of named playlist\n");
+  printf("\t -i - show information of named playlist\n");
   printf("\t -e - export named playlist as m3u\n");
   printf("\t -o - [required for -e] m3u output file path\n");
+  printf("\t -s - substitution string in file location during export. Format: #find#replace#\n");
   return;
 }
 
@@ -23,6 +24,7 @@ int main(int argc, char *argv[]) {
   char *trackstring = NULL;
   char *playliststring = NULL;
   char *exportstring = NULL;
+  char *findreplacestring = NULL;
   char *outputpath = NULL;
   char *filepath = NULL;
   bool listtracks = false;
@@ -35,7 +37,7 @@ int main(int argc, char *argv[]) {
   struct track_t *tracks = NULL;
   struct playlist_t *playlists = NULL;
 
-  while ((c = getopt(argc, argv, "lpf:t:s:e:o:")) != -1) {
+  while ((c = getopt(argc, argv, "lpf:t:i:e:o:s:")) != -1) {
     switch (c) {
       case 'f':
         filepath = optarg;
@@ -49,7 +51,7 @@ int main(int argc, char *argv[]) {
       case 't':
         trackstring = optarg;
         break;
-      case 's':
+      case 'i':
         playliststring = optarg;
         break;
       case 'e':
@@ -57,6 +59,9 @@ int main(int argc, char *argv[]) {
         break;
       case 'o':
         outputpath = optarg;
+        break;
+      case 's':
+        findreplacestring = optarg;
         break;
       case '?':
         printf("Unknown option -%c\n", c);
@@ -105,7 +110,7 @@ int main(int argc, char *argv[]) {
       printf("-e (Export) requires -o (Output file path)\n");
       return -1;
     }
-    if (export_playlist(db, playlists, exportstring, tracks, ofd) == STATUS_ERROR) {
+    if (export_playlist(db, playlists, exportstring, tracks, ofd, findreplacestring) == STATUS_ERROR) {
       printf("Failed to export playlist\n");
       return -1;
     }

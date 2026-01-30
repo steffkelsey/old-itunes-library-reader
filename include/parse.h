@@ -44,6 +44,6 @@ void list_playlists(struct db_t *db, struct playlist_t *playlists);
 void list_tracks(struct db_t *db, struct track_t *tracks);
 int show_track(struct db_t *db, struct track_t *tracks, char *trackstring);
 int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks);
-int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks, int fd);
+int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks, int fd, char *findreplacestring);
 
 #endif

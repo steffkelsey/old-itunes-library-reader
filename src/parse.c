@@ -93,7 +93,7 @@ int show_playlist(struct db_t *db, struct playlist_t *playlists, char *playlists
   return STATUS_SUCCESS;
 }
 
-int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks, int fd) {
+int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playliststring, struct track_t *tracks, int fd, char *findreplacestring) {
   if (fd < 0) {
     printf("Got a bad FD from the user\n");
     return STATUS_ERROR;
@@ -102,6 +102,14 @@ int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playlis
 
   char *name = strtok(playliststring, ",");
   if (NULL == name) return STATUS_ERROR;
+
+  // check if we have a valid findreplace string
+  bool substitute_file_location = false;
+  char *find = strtok(findreplacestring, "#");
+  char *replace = strtok(NULL, "#");
+  if (find && replace) {
+    substitute_file_location = true;
+  }
 
   // Truncate the file to zero each time to always overwrite from scratch
   if (ftruncate(fd, 0) == -1) {
@@ -123,7 +131,35 @@ int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playlis
         for (int k = 0; k < db->header->trackcount; k++) {
           if (playlists[i].track_ids[j] == tracks[k].id) {
             // For each song, write the file location into one line
-            write(fd, &tracks[k].file_location, tracks[k].file_location_length * sizeof(char));
+            if (substitute_file_location) {
+              // Find the position of the find string
+              unsigned char *p = strstr(tracks[k].file_location, find);
+              if (NULL == p) {
+                // Could not find the string
+                printf("Could not find string to '%s'\n", find);
+                return STATUS_ERROR;
+              }
+              // Check if the pointer is at the beginning or in the middle
+              if (strlen(p) != tracks[k].file_location_length) {
+                // Write out the beginning of the file_location stopping
+                // before p
+                unsigned char *ptr = tracks[k].file_location;
+                while (ptr < p) {
+                  write(fd, ptr, sizeof(char));
+                  ptr++;
+                }
+                ptr = NULL;
+              }
+              // write the replace string
+              write(fd, replace, strlen(replace) * sizeof(char));
+              // Move the pointer to the end of the find string
+              p += strlen(find);
+              // write the remaining chars the file_location
+              write(fd, p, (tracks[k].file_location_length - strlen(find)) * sizeof(char));
+              p = NULL;
+            } else {
+              write(fd, &tracks[k].file_location, tracks[k].file_location_length * sizeof(char));
+            }
             // write the newline string
             write(fd, nl, nl_length);
             continue;
