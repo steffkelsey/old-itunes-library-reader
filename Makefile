@@ -15,7 +15,7 @@ clean:
 	rm -f bin/*
 
 $(TARGET): $(OBJ)
-	gcc -o $@ $? -lcrypto -lz
+	gcc -o $@ $? -lcrypto -lz -lcurl
 
 # Uncomment to compile without debug info
 #obj/%.o : src/%.c

@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include <zlib.h>
+#include <curl/curl.h>
 
 #include "common.h"
 #include "crypto.h"
@@ -99,6 +100,7 @@ int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playlis
     return STATUS_ERROR;
   }
   if (NULL == db) return STATUS_ERROR;
+  CURL *curl = curl_easy_init();
 
   char *name = strtok(playliststring, ",");
   if (NULL == name) return STATUS_ERROR;
@@ -155,7 +157,16 @@ int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playlis
               // Move the pointer to the end of the find string
               p += strlen(find);
               // write the remaining chars the file_location
-              write(fd, p, (tracks[k].file_location_length - strlen(find)) * sizeof(char));
+              if(curl) {
+                int outlength;
+                char *decoded = curl_easy_unescape(curl, p, (tracks[k].file_location_length - strlen(find)), &outlength);
+                if(decoded) {
+                  write(fd, decoded, outlength * sizeof(char));
+                  curl_free(decoded);
+                }
+              } else {
+                write(fd, p, (tracks[k].file_location_length - strlen(find)) * sizeof(char));
+              }
               p = NULL;
             } else {
               write(fd, &tracks[k].file_location, tracks[k].file_location_length * sizeof(char));
@@ -175,6 +186,7 @@ int export_playlist(struct db_t *db, struct playlist_t *playlists, char *playlis
     printf("No playlist found with that name\n");
   }
 
+  curl_easy_cleanup(curl);
   return STATUS_SUCCESS;
 }
 
